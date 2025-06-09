@@ -1,0 +1,87 @@
+namespace LojaVirtual.Factory
+{
+    using LojaVirtual.Models;
+    using System.Collections.Generic;
+
+    public static class PedidoFactory
+    {
+        public static Pedido CriarPedido(int id, Cliente cliente, List<ItemPedido> itens)
+        {
+            return new Pedido(id, cliente, itens);
+        }
+    }
+}
+
+namespace LojaVirtual.Services
+{
+    using LojaVirtual.Descontos;
+    using LojaVirtual.Models;
+    using LojaVirtual.Repositories;
+    using LojaVirtual.Logging;
+    using LojaVirtual.Factory;
+    using System.Collections.Generic;
+
+    public class PedidoService
+    {
+        private readonly IPedidoRepository _pedidoRepo;
+        private readonly ILogger _logger;
+        private readonly List<IDescontoStrategy> _descontos;
+
+        public PedidoService(IPedidoRepository pedidoRepo, ILogger logger, List<IDescontoStrategy> descontos)
+        {
+            _pedidoRepo = pedidoRepo;
+            _logger = logger;
+            _descontos = descontos;
+        }
+
+     
+        private void AplicarDescontos(List<ItemPedido> itens)
+        {
+            foreach (var item in itens)
+            {
+                decimal maiorDesconto = 0m;
+                foreach (var estrategia in _descontos)
+                {
+                    var desconto = estrategia.Calcular(item);
+                    if (desconto > maiorDesconto)
+                        maiorDesconto = desconto;
+                }
+
+                if (maiorDesconto > 0)
+                {
+                    decimal descontoPorUnidade = maiorDesconto / item.Quantidade;
+                    item.Produto.AplicarDesconto(descontoPorUnidade);
+                }
+            }
+        }
+
+        public void CriarPedido(int id, Cliente cliente, List<ItemPedido> itens)
+        {
+            AplicarDescontos(itens);
+
+            var pedido = PedidoFactory.CriarPedido(id, cliente, itens);
+            _pedidoRepo.Adicionar(pedido);
+            _logger.Log($"Pedido {pedido.Id} criado para {pedido.Cliente.Nome} no valor de R$ {pedido.ValorTotal:F2}");
+        }
+
+        public void ExibirRelatorio()
+        {
+            var pedidos = _pedidoRepo.Listar();
+            if (pedidos.Count == 0)
+            {
+                Console.WriteLine("Nenhum pedido cadastrado.");
+                return;
+            }
+
+            foreach (var pedido in pedidos)
+            {
+                Console.WriteLine($"\nPedido {pedido.Id} - Cliente: {pedido.Cliente.Nome} - Total: R$ {pedido.ValorTotal:F2} - Data: {pedido.Data}");
+                Console.WriteLine("Itens:");
+                foreach (var item in pedido.Itens)
+                {
+                    Console.WriteLine($"  {item.Produto.Nome} - Quantidade: {item.Quantidade} - Preço unitário: R$ {item.Produto.Preco:F2} - Subtotal: R$ {item.Subtotal:F2}");
+                }
+            }
+        }
+    }
+}
