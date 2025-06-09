@@ -1,0 +1,99 @@
+namespace LojaVirtual.Descontos
+{
+    using LojaVirtual.Models;
+
+    public interface IDescontoStrategy
+    {
+        decimal Calcular(ItemPedido item);
+    }
+
+    public class DescontoPorCategoria : IDescontoStrategy
+    {
+        public decimal Calcular(ItemPedido item)
+        {
+            if (item.Produto.Categoria.Equals("Eletrônicos", StringComparison.OrdinalIgnoreCase))
+                return item.Subtotal * 0.1m; // 10%
+            return 0;
+        }
+    }
+
+    public class DescontoPorQuantidade : IDescontoStrategy
+    {
+        public decimal Calcular(ItemPedido item)
+        {
+            if (item.Quantidade >= 5)
+                return item.Subtotal * 0.15m; // 15%
+            return 0;
+        }
+    }
+}
+
+namespace LojaVirtual.Repositories
+{
+    using LojaVirtual.Models;
+    using System.Collections.Generic;
+
+    public interface IProdutoRepository
+    {
+        void Adicionar(Produto produto);
+        Produto ObterPorId(int id);
+        List<Produto> Listar();
+    }
+
+    public class ProdutoRepository : IProdutoRepository
+    {
+        private readonly List<Produto> produtos = new();
+
+        public void Adicionar(Produto produto) => produtos.Add(produto);
+
+        public Produto ObterPorId(int id) => produtos.FirstOrDefault(p => p.Id == id);
+
+        public List<Produto> Listar() => produtos;
+    }
+
+    public interface IClienteRepository
+    {
+        void Adicionar(Cliente cliente);
+        Cliente ObterPorId(int id);
+        List<Cliente> Listar();
+    }
+
+    public class ClienteRepository : IClienteRepository
+    {
+        private readonly List<Cliente> clientes = new();
+
+        public void Adicionar(Cliente cliente) => clientes.Add(cliente);
+
+        public Cliente ObterPorId(int id) => clientes.FirstOrDefault(c => c.Id == id);
+
+        public List<Cliente> Listar() => clientes;
+    }
+
+    public interface IPedidoRepository
+    {
+        void Adicionar(Pedido pedido);
+        List<Pedido> Listar();
+    }
+
+    public class PedidoRepository : IPedidoRepository
+    {
+        private readonly List<Pedido> pedidos = new();
+
+        public void Adicionar(Pedido pedido) => pedidos.Add(pedido);
+
+        public List<Pedido> Listar() => pedidos;
+    }
+}
+
+namespace LojaVirtual.Logging
+{
+    public interface ILogger
+    {
+        void Log(string mensagem);
+    }
+
+    public class ConsoleLogger : ILogger
+    {
+        public void Log(string mensagem) => Console.WriteLine($"[LOG] {mensagem}");
+    }
+}
