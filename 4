@@ -1,0 +1,185 @@
+class Program
+{
+    static void Main()
+    {
+        var produtoRepo = new LojaVirtual.Repositories.ProdutoRepository();
+        var clienteRepo = new LojaVirtual.Repositories.ClienteRepository();
+        var pedidoRepo = new LojaVirtual.Repositories.PedidoRepository();
+        var logger = new LojaVirtual.Logging.ConsoleLogger();
+
+        var descontos = new List<LojaVirtual.Descontos.IDescontoStrategy>
+        {
+            new LojaVirtual.Descontos.DescontoPorCategoria(),
+            new LojaVirtual.Descontos.DescontoPorQuantidade()
+        };
+
+        var pedidoService = new LojaVirtual.Services.PedidoService(pedidoRepo, logger, descontos);
+
+        int opcao = -1;
+        int idProduto = 1;
+        int idCliente = 1;
+        int idPedido = 1;
+
+        while (opcao != 0)
+        {
+            Console.WriteLine("\n=== Sistema de Gestão de Pedidos ===");
+            Console.WriteLine("1 - Cadastrar Produto");
+            Console.WriteLine("2 - Cadastrar Cliente");
+            Console.WriteLine("3 - Criar Pedido");
+            Console.WriteLine("4 - Listar Pedidos");
+            Console.WriteLine("0 - Sair");
+            Console.Write("Escolha uma opção: ");
+
+            if (!int.TryParse(Console.ReadLine(), out opcao))
+            {
+                Console.WriteLine("Opção inválida.");
+                continue;
+            }
+
+            switch (opcao)
+            {
+                case 1:
+                    try
+                    {
+                        Console.Write("Nome do produto: ");
+                        string nome = Console.ReadLine();
+
+                        Console.Write("Preço do produto: ");
+                        if (!decimal.TryParse(Console.ReadLine(), out decimal preco))
+                        {
+                            Console.WriteLine("Preço inválido.");
+                            break;
+                        }
+
+                        Console.Write("Categoria do produto: ");
+                        string categoria = Console.ReadLine();
+
+                        var produto = new LojaVirtual.Models.Produto(idProduto++, nome, preco, categoria);
+                        produtoRepo.Adicionar(produto);
+                        Console.WriteLine("Produto cadastrado com sucesso.");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Erro: " + e.Message);
+                    }
+                    break;
+
+                case 2:
+                    try
+                    {
+                        Console.Write("Nome do cliente: ");
+                        string nomeCliente = Console.ReadLine();
+
+                        Console.Write("Email do cliente: ");
+                        string email = Console.ReadLine();
+
+                        Console.Write("CPF do cliente: ");
+                        string cpf = Console.ReadLine();
+
+                        var cliente = new LojaVirtual.Models.Cliente(idCliente++, nomeCliente, email, cpf);
+                        clienteRepo.Adicionar(cliente);
+                        Console.WriteLine("Cliente cadastrado com sucesso.");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Erro: " + e.Message);
+                    }
+                    break;
+
+                case 3:
+                    try
+                    {
+                        if (clienteRepo.Listar().Count == 0)
+                        {
+                            Console.WriteLine("Nenhum cliente cadastrado. Cadastre um cliente primeiro.");
+                            break;
+                        }
+                        if (produtoRepo.Listar().Count == 0)
+                        {
+                            Console.WriteLine("Nenhum produto cadastrado. Cadastre um produto primeiro.");
+                            break;
+                        }
+
+                        Console.WriteLine("Clientes disponíveis:");
+                        foreach (var c in clienteRepo.Listar())
+                            Console.WriteLine($"{c.Id} - {c.Nome}");
+
+                        Console.Write("Digite o ID do cliente para o pedido: ");
+                        if (!int.TryParse(Console.ReadLine(), out int idClientePedido))
+                        {
+                            Console.WriteLine("ID inválido.");
+                            break;
+                        }
+
+                        var clientePedido = clienteRepo.ObterPorId(idClientePedido);
+                        if (clientePedido == null)
+                        {
+                            Console.WriteLine("Cliente não encontrado.");
+                            break;
+                        }
+
+                        var itensPedido = new List<LojaVirtual.Models.ItemPedido>();
+                        string continuar = "s";
+
+                        while (continuar.ToLower() == "s")
+                        {
+                            Console.WriteLine("Produtos disponíveis:");
+                            foreach (var p in produtoRepo.Listar())
+                                Console.WriteLine($"{p.Id} - {p.Nome} - R$ {p.Preco:F2} - Categoria: {p.Categoria}");
+
+                            Console.Write("Digite o ID do produto: ");
+                            if (!int.TryParse(Console.ReadLine(), out int idProdutoPedido))
+                            {
+                                Console.WriteLine("ID inválido.");
+                                continue;
+                            }
+
+                            var produtoPedido = produtoRepo.ObterPorId(idProdutoPedido);
+                            if (produtoPedido == null)
+                            {
+                                Console.WriteLine("Produto não encontrado.");
+                                continue;
+                            }
+
+                            Console.Write("Quantidade: ");
+                            if (!int.TryParse(Console.ReadLine(), out int quantidade) || quantidade <= 0)
+                            {
+                                Console.WriteLine("Quantidade inválida.");
+                                continue;
+                            }
+
+                            itensPedido.Add(new LojaVirtual.Models.ItemPedido(produtoPedido, quantidade));
+
+                            Console.Write("Deseja adicionar mais produtos? (s/n): ");
+                            continuar = Console.ReadLine();
+                        }
+
+                        if (itensPedido.Count == 0)
+                        {
+                            Console.WriteLine("Nenhum produto adicionado ao pedido.");
+                            break;
+                        }
+
+                        pedidoService.CriarPedido(idPedido++, clientePedido, itensPedido);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Erro: " + e.Message);
+                    }
+                    break;
+
+                case 4:
+                    pedidoService.ExibirRelatorio();
+                    break;
+
+                case 0:
+                    Console.WriteLine("Saindo...");
+                    break;
+
+                default:
+                    Console.WriteLine("Opção inválida.");
+                    break;
+            }
+        }
+    }
+}
