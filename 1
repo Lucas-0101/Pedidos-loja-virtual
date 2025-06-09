@@ -1,0 +1,88 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LojaVirtual.Models
+{
+    public class Produto
+    {
+        public int Id { get; }
+        public string Nome { get; }
+        public decimal Preco { get; private set; }
+        public string Categoria { get; }
+
+        public Produto(int id, string nome, decimal preco, string categoria)
+        {
+            if (string.IsNullOrWhiteSpace(nome)) throw new ArgumentException("Nome inválido.");
+            if (preco <= 0) throw new ArgumentException("Preço deve ser maior que zero.");
+            if (string.IsNullOrWhiteSpace(categoria)) throw new ArgumentException("Categoria inválida.");
+
+            Id = id;
+            Nome = nome;
+            Preco = preco;
+            Categoria = categoria;
+        }
+
+        public void AplicarDesconto(decimal valorDesconto)
+        {
+            if (valorDesconto < 0 || valorDesconto > Preco)
+                throw new ArgumentException("Desconto inválido.");
+            Preco -= valorDesconto;
+        }
+    }
+
+    public class Cliente
+    {
+        public int Id { get; }
+        public string Nome { get; }
+        public string Email { get; }
+        public string CPF { get; }
+
+        public Cliente(int id, string nome, string email, string cpf)
+        {
+            if (string.IsNullOrWhiteSpace(nome)) throw new ArgumentException("Nome inválido.");
+            if (string.IsNullOrWhiteSpace(email)) throw new ArgumentException("Email inválido.");
+            if (string.IsNullOrWhiteSpace(cpf)) throw new ArgumentException("CPF inválido.");
+
+            Id = id;
+            Nome = nome;
+            Email = email;
+            CPF = cpf;
+        }
+    }
+
+    public class ItemPedido
+    {
+        public Produto Produto { get; }
+        public int Quantidade { get; }
+
+        public ItemPedido(Produto produto, int quantidade)
+        {
+            if (quantidade <= 0) throw new ArgumentException("Quantidade deve ser maior que zero.");
+            Produto = produto ?? throw new ArgumentNullException(nameof(produto));
+            Quantidade = quantidade;
+        }
+
+        public decimal Subtotal => Produto.Preco * Quantidade;
+    }
+
+    public class Pedido
+    {
+        public int Id { get; }
+        public Cliente Cliente { get; }
+        public List<ItemPedido> Itens { get; }
+        public DateTime Data { get; }
+        public decimal ValorTotal => Itens.Sum(i => i.Subtotal);
+
+        public Pedido(int id, Cliente cliente, List<ItemPedido> itens)
+        {
+            if (cliente == null) throw new ArgumentNullException(nameof(cliente));
+            if (itens == null || itens.Count == 0) throw new ArgumentException("Pedido deve ter ao menos um item.");
+
+            Id = id;
+            Cliente = cliente;
+            Itens = itens;
+            Data = DateTime.Now;
+        }
+    }
+}
